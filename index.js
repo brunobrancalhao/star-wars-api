@@ -28,6 +28,44 @@ app.get('/films', async (req, res, next) => {
   }
 });
 
+app.get('/films/:id', async (req, res, next) => {
+  try {
+    const filmId = req.params.id;
+    const { data } = await axios.request({ baseURL, url: `films/${filmId}` });
+
+    const charactersRequests = await Promise.all(data.characters.map(characterUrl => {
+      return axios.get(characterUrl);
+    }));
+
+    const characters = charactersRequests.map((y) => y.data).map((x) => {
+      return {
+        name: x.name,
+        gender: x.gender,
+        birthYear: x.birth_year,
+        eyeColor: x.eye_color,
+        height: x.height,
+        mass: x.mass,
+        photo: getCharacterImageUrl(x.url)
+      }
+    });
+
+    data.id = getFilmId(data.url);
+    data.photo = getFilmImageUrl(data.id);
+    data.characters = characters;
+
+    return res.send(data).status(200);
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+});
+
+app.all('*', async (req, res, next) => {
+  res.send({
+    routes: ['films', 'films/id']
+  })
+});
+
 app.use((req, res, next) => {
   res.header('Content-Type', 'application/json; charset=utf-8');
   res.header('Access-Control-Allow-Origin', '*');
@@ -38,4 +76,9 @@ app.use((req, res, next) => {
     return res.status(204).send();
   }
   next();
-})
+});
+
+const port = process.env.PORT || 9000;
+app.listen(port, () => {
+  console.log(`Aplicação - Ativa :D | ${port}`);
+});
